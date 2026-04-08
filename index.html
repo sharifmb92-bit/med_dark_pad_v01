@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"/>
+    
+    <link rel="manifest" href='data:application/manifest+json,{"name":"DARK PAD PRO V5","short_name":"DP Pro","start_url":".","display":"standalone","background_color":"#050a0f","theme_color":"#050a0f","icons":[{"src":"data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjUxMiIgaGVpZ2h0PSI1MTIiIHJ4PSI4MCIgZmlsbD0iIzA1MGEwZiIvPjx0ZXh0IHg9IjUwJSIgeT0iNjUlIiBmaWxsPSIjZjE1YTAyIiBmb250LXNpemU9IjI0MCIgZm9udC1mYW1pbHk9InNhbnMtc2VyaWYiIGZvbnQtd2VpZ2h0PSJib2xkIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5EUDwvdGV4dD48L3N2Zz4=","sizes":"512x512","type":"image/svg+xml"}]}'>
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Dark Pad Pro</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src='https://unpkg.com/tesseract.js@v2.1.0/dist/tesseract.min.js'></script>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
+
+    <style>
+        [x-cloak] { display: none !important; }
+        body { background-color: #050a0f; color: #e2e8f0; font-family: system-ui, sans-serif; height: 100vh; overflow: hidden; transition: background 0.3s; }
+        .bg-pure-black { background-color: #000000 !important; }
+        
+        /* Ajustes Estilo Premium */
+        .settings-card { background: #0f172a; border-radius: 1.2rem; border: 1px solid #1e293b; overflow: hidden; margin-bottom: 1.5rem; }
+        .settings-item { padding: 1.2rem; border-bottom: 1px solid #1e293b; display: flex; justify-content: space-between; align-items: center; }
+        .section-title { color: #38bdf8; font-weight: 800; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; padding: 1rem 0 0.5rem 0.5rem; }
+        
+        /* Switch */
+        .switch { position: relative; display: inline-block; width: 46px; height: 26px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #334155; transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #38bdf8; }
+        input:checked + .slider:before { transform: translateX(20px); }
+
+        .note-card { border-radius: 1.5rem; border: 1px solid rgba(255,255,255,0.05); height: 160px; transition: transform 0.1s; }
+        .is-pinned { border: 2px solid #e67e22 !important; box-shadow: 0 0 15px rgba(230,126,34,0.2); }
+        .modal-card { width: 92%; max-width: 450px; border-radius: 2.5rem; overflow: hidden; box-shadow: 0 25px 50px rgba(0,0,0,0.9); z-index: 210; }
+        textarea { background: transparent !important; color: white !important; width: 100%; height: 380px; border: none; outline: none; padding: 1.5rem; resize: none; font-weight: 500; }
+        
+        .fab-container { position: fixed; bottom: 30px; right: 20px; display: flex; flex-direction: column; gap: 12px; z-index: 100; }
+        .btn-fab { width: 65px; height: 65px; border-radius: 1.4rem; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 25px rgba(0,0,0,0.6); }
+
+        /* Colores de notas */
+        .bg-dark-orange { background-color: #5d340b; } .bg-dark-blue { background-color: #153e5a; }
+        .bg-dark-green { background-color: #145a32; } .bg-dark-purple { background-color: #3b1c4a; }
+        .bg-dark-red { background-color: #641e16; } .bg-dark-gray { background-color: #1c2833; }
+    </style>
+</head>
+<body x-data="notesApp()" x-init="init()" :class="config.pureBlack ? 'bg-pure-black' : ''">
+
+    <header class="p-6 flex justify-between items-center sticky top-0 z-50 bg-inherit border-b border-white/5">
+        <div>
+            <h1 class="text-xl font-black text-orange-500 tracking-tighter uppercase italic">Dark Pad</h1>
+            <p class="text-[9px] font-black text-sky-500 uppercase" x-text="config.folderMode ? 'MODO CARPETAS' : 'NOTAS RECIENTES'"></p>
+        </div>
+        <button @click="showSettings = true" class="p-2 bg-white/5 rounded-full active:scale-90 transition-transform">
+            <span class="material-symbols-outlined text-sky-400">settings</span>
+        </button>
+    </header>
+
+    <div x-show="isScanning" x-cloak class="fixed top-20 left-0 right-0 bg-blue-600 text-white text-center py-2 font-black text-[10px] z-[60] animate-pulse uppercase tracking-widest">
+        Leyendo imagen... Un momento Bro
+    </div>
+
+    <main class="p-4 grid grid-cols-2 gap-4 h-[calc(100vh-120px)] overflow-y-auto pb-32">
+        <template x-for="nota in notasOrdenadas" :key="nota.id">
+            <div @click="abrirNota(nota)" class="note-card p-5 flex flex-col justify-between active:scale-95 transition-all" :class="[nota.estilo, nota.pinned ? 'is-pinned' : '']">
+                <p class="font-bold line-clamp-4 text-white/90" 
+                   :style="{ fontSize: config.fontSize + 'px', letterSpacing: config.letterSpacing + 'px' }" 
+                   x-text="nota.texto || '...'"></p>
+                <div class="flex justify-between items-center opacity-40 text-[9px] font-black uppercase">
+                    <span x-text="nota.fecha"></span>
+                    <span x-show="nota.pinned" class="material-symbols-outlined text-xs">push_pin</span>
+                </div>
+            </div>
+        </template>
+    </main>
+
+    <div x-show="showSettings" x-transition x-cloak class="fixed inset-0 bg-[#050a0f] z-[300] overflow-y-auto p-6">
+        <div class="flex justify-between items-center mb-8">
+            <h2 class="text-2xl font-black text-white uppercase italic">Ajustes</h2>
+            <button @click="showSettings = false" class="bg-sky-500/10 text-sky-500 px-4 py-1 rounded-full font-bold uppercase text-[10px]">Listo</button>
+        </div>
+
+        <div class="section-title">Texto y Lectura</div>
+        <div class="settings-card">
+            <div class="settings-item">
+                <span class="font-bold">Tamaño Letra</span>
+                <select x-model="config.fontSize" class="bg-transparent text-sky-400 font-bold outline-none">
+                    <option value="14">S</option><option value="18">M</option><option value="24">L</option><option value="30">XL</option>
+                </select>
+            </div>
+            <div class="settings-item">
+                <span class="font-bold">Espaciado (Spacing)</span>
+                <select x-model="config.letterSpacing" class="bg-transparent text-sky-400 font-bold outline-none">
+                    <option value="0">0</option><option value="1">1</option><option value="2">2</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="section-title">Sistema</div>
+        <div class="settings-card">
+            <div class="settings-item">
+                <span class="font-bold">Negro Puro (AMOLED)</span>
+                <label class="switch"><input type="checkbox" x-model="config.pureBlack"><span class="slider"></span></label>
+            </div>
+            <div class="settings-item">
+                <span class="font-bold">Modo Carpetas</span>
+                <label class="switch"><input type="checkbox" x-model="config.folderMode"><span class="slider"></span></label>
+            </div>
+        </div>
+    </div>
+
+    <div x-show="notaExpandida" x-transition x-cloak class="fixed inset-0 bg-black/90 z-[200] flex items-center justify-center p-4">
+        <div class="modal-card flex flex-col" :class="notaExpandida?.estilo">
+            <div class="flex justify-between items-center px-6 py-4 border-b border-white/10">
+                <div class="flex gap-6">
+                    <button @click="notaExpandida.pinned = !notaExpandida.pinned" :class="notaExpandida?.pinned ? 'text-orange-400' : 'text-white/40'">
+                        <span class="material-symbols-outlined">push_pin</span>
+                    </button>
+                    <button @click="toggleReminder()" :class="notaExpandida?.reminder ? 'text-red-400 animate-pulse' : 'text-white/40'">
+                        <span class="material-symbols-outlined">notifications</span>
+                    </button>
+                </div>
+                <button @click="cerrarNota()" class="bg-black/30 text-white w-10 h-10 rounded-full flex items-center justify-center"><span class="material-symbols-outlined">close</span></button>
+            </div>
+            <textarea x-model="notaExpandida.texto" @input.debounce.500ms="guardar()" 
+                      :style="{ fontSize: config.fontSize + 'px', letterSpacing: config.letterSpacing + 'px' }"></textarea>
+            <div class="px-6 py-3 flex justify-between bg-black/10 text-[10px] opacity-40 uppercase font-black">
+                <span x-text="notaExpandida?.fecha"></span>
+                <button @click="borrarNota()" class="text-white/80">Eliminar Nota</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="fab-container">
+        <label class="btn-fab bg-blue-700 active:scale-90 cursor-pointer">
+            <span class="material-symbols-outlined text-white text-3xl" x-show="!isScanning">document_scanner</span>
+            <span class="material-symbols-outlined text-white text-3xl animate-spin" x-show="isScanning">sync</span>
+            <input type="file" class="hidden" accept="image/*" capture="environment" @change="escanearTexto($event)">
+        </label>
+        <button @click="nuevaNota()" class="btn-fab bg-orange-600 active:scale-90 shadow-lg shadow-orange-900/20">
+            <span class="material-symbols-outlined text-black font-black text-4xl">add</span>
+        </button>
+    </div>
+
+    <script>
+        function notesApp() {
+            return {
+                notas: [], notaExpandida: null, showSettings: false, isScanning: false,
+                config: { fontSize: 18, letterSpacing: 0, pureBlack: false, folderMode: false },
+                estilos: ['bg-dark-orange', 'bg-dark-blue', 'bg-dark-green', 'bg-dark-purple', 'bg-dark-red', 'bg-dark-gray'],
+                
+                init() {
+                    this.notas = JSON.parse(localStorage.getItem('darkpad_vFinal_B') || '[]');
+                    this.config = JSON.parse(localStorage.getItem('config_vFinal_B') || JSON.stringify(this.config));
+                    if (Notification.permission === "default") Notification.requestPermission();
+                },
+                nuevaNota(txt = '') {
+                    const ahora = new Date();
+                    const n = { id: Date.now(), texto: txt, fecha: ahora.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) + ' ' + ahora.toLocaleDateString([], {day:'2-digit', month:'2-digit'}), estilo: this.estilos[Math.floor(Math.random()*6)], pinned: false, reminder: false };
+                    this.notas.unshift(n); this.guardar(); this.abrirNota(n);
+                },
+                async escanearTexto(e) {
+                    const f = e.target.files[0]; if(!f) return;
+                    this.isScanning = true;
+                    try {
+                        const res = await Tesseract.recognize(f, 'spa');
+                        this.nuevaNota(res.data.text.trim());
+                    } catch (err) { alert("Error de lectura OCR"); }
+                    this.isScanning = false;
+                },
+                abrirNota(n) { this.notaExpandida = n; },
+                cerrarNota() { this.notaExpandida = null; this.guardar(); },
+                toggleReminder() {
+                    this.notaExpandida.reminder = !this.notaExpandida.reminder;
+                    if(this.notaExpandida.reminder && Notification.permission === "granted") {
+                        new Notification("Dark Pad Pro", { body: this.notaExpandida.texto.substring(0,40) + "...", requireInteraction: true });
+                    }
+                    this.guardar();
+                },
+                borrarNota() { if(confirm("¿Seguro que quieres eliminarla?")) { this.notas = this.notas.filter(n => n.id !== this.notaExpandida.id); this.cerrarNota(); } },
+                guardar() { 
+                    localStorage.setItem('darkpad_vFinal_B', JSON.stringify(this.notas)); 
+                    localStorage.setItem('config_vFinal_B', JSON.stringify(this.config)); 
+                },
+                get notasOrdenadas() { return [...this.notas].sort((a, b) => b.pinned - a.pinned || b.id - a.id); }
+            }
+        }
+    </script>
+</body>
+</html>
